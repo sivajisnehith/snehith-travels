@@ -1,0 +1,30 @@
+# Virtual Environments
+venv/
+.venv/
+env/
+.env
+
+# Python Cache & Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+*.db
+*.sqlite3
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+build/
+.vercel/
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log
+*.pem
+
+# Keep .env.example
+!.env.example
