@@ -97,23 +97,85 @@ def deliver_payment_link(
     return PaymentDeliveryResponse(**res)
 
 
-@router.post("/{payment_id}/mock-success", response_model=MockPaymentUpdate, deprecated=True)
-def deprecated_mock_payment_success(
+@router.post("/{payment_id}/mock-success", response_model=MockPaymentUpdate)
+def mock_payment_success(
     payment_id: int = Path(..., description="Payment ID"),
+    db: Session = Depends(get_db),
 ):
-    """Deprecated: Replaced by Razorpay TEST MODE and webhooks."""
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Mock payment buttons have been deprecated in favor of Razorpay Test Mode."
+    """Simulate a successful payment for instant sandbox testing."""
+    from datetime import datetime, timezone
+    import uuid
+    from app.models.payment import Payment
+    from app.models.seat_hold import SeatHold
+
+    payment = db.query(Payment).filter(Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment with ID {payment_id} not found."
+        )
+
+    now = datetime.now(timezone.utc)
+    payment.status = "PAID"
+    payment.provider_payment_id = f"pay_mock_{uuid.uuid4().hex[:10]}"
+    payment.updated_at = now
+
+    booking = payment.booking
+    if booking:
+        booking.status = "CONFIRMED"
+        booking.updated_at = now
+
+        holds = (
+            db.query(SeatHold)
+            .filter(
+                SeatHold.bus_id == booking.bus_id,
+                SeatHold.journey_date == booking.journey_date,
+                SeatHold.status == "ACTIVE",
+            )
+            .all()
+        )
+        booked_seat_ids = {bs.seat_id for bs in booking.booking_seats}
+        for h in holds:
+            if h.seat_id in booked_seat_ids:
+                h.status = "CONVERTED"
+
+    db.commit()
+    db.refresh(payment)
+
+    return MockPaymentUpdate(
+        status=payment.status,
+        message="Payment marked as successful via sandbox simulation.",
+        booking_reference=booking.booking_reference if booking else "N/A",
+        booking_status=booking.status if booking else "N/A",
     )
 
 
-@router.post("/{payment_id}/mock-failure", response_model=MockPaymentUpdate, deprecated=True)
-def deprecated_mock_payment_failure(
+@router.post("/{payment_id}/mock-failure", response_model=MockPaymentUpdate)
+def mock_payment_failure(
     payment_id: int = Path(..., description="Payment ID"),
+    db: Session = Depends(get_db),
 ):
-    """Deprecated: Replaced by Razorpay TEST MODE and webhooks."""
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Mock payment buttons have been deprecated in favor of Razorpay Test Mode."
+    """Simulate a failed payment for sandbox verification."""
+    from datetime import datetime, timezone
+    from app.models.payment import Payment
+
+    payment = db.query(Payment).filter(Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Payment with ID {payment_id} not found."
+        )
+
+    now = datetime.now(timezone.utc)
+    payment.status = "FAILED"
+    payment.updated_at = now
+    db.commit()
+    db.refresh(payment)
+
+    booking = payment.booking
+    return MockPaymentUpdate(
+        status="FAILED",
+        message="Payment marked as failed via sandbox simulation.",
+        booking_reference=booking.booking_reference if booking else "N/A",
+        booking_status=booking.status if booking else "N/A",
     )

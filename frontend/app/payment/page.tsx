@@ -24,6 +24,7 @@ function PaymentPageContent() {
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
+  const [simulating, setSimulating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const initializedRef = React.useRef(false);
@@ -113,6 +114,27 @@ function PaymentPageContent() {
       setError(err.message || 'Failed to verify payment status.');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleSimulateSuccess = async () => {
+    const payId = payment?.id || booking?.payment_id;
+    if (!payId) return;
+
+    setSimulating(true);
+    setError(null);
+    try {
+      await api.mockPaymentSuccess(payId);
+      const updatedPayment = await api.getPayment(payId);
+      setPayment(updatedPayment);
+      if (bookingId) {
+        const updatedBooking = await api.getBooking(bookingId);
+        setBooking(updatedBooking);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Simulation failed.');
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -263,17 +285,17 @@ function PaymentPageContent() {
         {/* STATE 4: PENDING PAYMENT */}
         {isPending && (
           <div className="space-y-4">
-            {payment?.payment_url ? (
+            {payment?.payment_url && (
               <div className="space-y-3">
                 <button
                   type="button"
                   onClick={handlePayNow}
-                  className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>💳</span> Pay ₹{booking?.total_amount} via Razorpay (Test Mode)
+                  <span>💳</span> Pay ₹{booking?.total_amount} via Razorpay Hosted Page
                 </button>
 
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-2 px-1">
+                <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 px-1">
                   <span>Provider: Razorpay Sandbox</span>
                   <button
                     type="button"
@@ -285,21 +307,33 @@ function PaymentPageContent() {
                   </button>
                 </div>
               </div>
-            ) : (
-              <button
-                type="button"
-                disabled={generatingLink}
-                onClick={handleGenerateLink}
-                className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition"
-              >
-                {generatingLink ? 'Creating Razorpay Payment Link...' : 'Generate Payment Link'}
-              </button>
             )}
 
-            <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100 text-[11px] text-blue-800 space-y-1 mt-4">
-              <div className="font-bold">ℹ️ Test Mode Instructions:</div>
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-zinc-200"></div>
+              <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Or Instant Test Mode Simulation
+              </span>
+              <div className="flex-grow border-t border-zinc-200"></div>
+            </div>
+
+            {/* Instant Sandbox Payment Simulation */}
+            <button
+              type="button"
+              disabled={simulating}
+              onClick={handleSimulateSuccess}
+              className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>⚡</span> {simulating ? 'Processing Sandbox Payment...' : `Instant Sandbox Pay ₹${booking?.total_amount} (Confirm & Generate Ticket)`}
+            </button>
+
+            <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-[11px] text-zinc-600 space-y-1 mt-4">
+              <div className="font-bold text-zinc-800">ℹ️ How payment works:</div>
               <p>
-                Clicking <strong>Pay via Razorpay</strong> opens the real Razorpay hosted test payment page. You can use standard Razorpay test cards or test UPI. No real money will be charged.
+                <strong>1. Real Razorpay Test Checkout:</strong> If you configured your Razorpay Key ID and Secret in server <code>.env</code> and set the Webhook URL in your Razorpay Dashboard, click <em>Pay via Razorpay</em> to complete via UPI/Card.
+              </p>
+              <p>
+                <strong>2. Instant Sandbox Simulation:</strong> Click <em>Instant Sandbox Pay</em> to simulate an immediate successful transaction and generate your digital ticket & QR code right now!
               </p>
             </div>
           </div>
