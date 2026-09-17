@@ -365,8 +365,9 @@ def process_razorpay_webhook(
 
     provider_link_id = plink_entity.get("id")
     reference_id = plink_entity.get("reference_id")
-    notes = plink_entity.get("notes", {}) or payment_entity.get("notes", {})
-    booking_id_str = notes.get("booking_id")
+    notes = plink_entity.get("notes", {}) or payment_entity.get("notes", {}) or {}
+    booking_id_val = notes.get("booking_id")
+    payment_id_val = notes.get("payment_id")
 
     # 2. Identify corresponding local Payment
     payment = None
@@ -376,8 +377,16 @@ def process_razorpay_webhook(
         booking_obj = db.query(Booking).filter(Booking.booking_reference == reference_id).first()
         if booking_obj:
             payment = db.query(Payment).filter(Payment.booking_id == booking_obj.id).first()
-    if not payment and booking_id_str and booking_id_str.isdigit():
-        payment = db.query(Payment).filter(Payment.booking_id == int(booking_id_str)).first()
+    if not payment and booking_id_val is not None:
+        try:
+            payment = db.query(Payment).filter(Payment.booking_id == int(booking_id_val)).first()
+        except (ValueError, TypeError):
+            pass
+    if not payment and payment_id_val is not None:
+        try:
+            payment = db.query(Payment).filter(Payment.id == int(payment_id_val)).first()
+        except (ValueError, TypeError):
+            pass
 
     if not payment:
         logger.warning("Webhook received for untracked payment/booking: %s", payload)

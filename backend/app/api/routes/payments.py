@@ -50,6 +50,7 @@ def check_payment_status(
     return get_payment(db, payment_id)
 
 
+@router.post("/webhook", response_model=WebhookResponse)
 @router.post("/webhook/razorpay", response_model=WebhookResponse)
 async def razorpay_webhook(
     request: Request,
