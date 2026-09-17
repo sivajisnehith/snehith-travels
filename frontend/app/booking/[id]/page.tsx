@@ -175,7 +175,7 @@ export default function TicketConfirmationPage({
             </div>
 
             <div className="pt-2 flex justify-between items-center text-xs">
-              <span className="text-zinc-500">Total Paid (Mock Gateway)</span>
+              <span className="text-zinc-500">Total Paid (Razorpay)</span>
               <span className="text-lg font-black text-zinc-900">₹{ticket.total_amount}</span>
             </div>
           </div>

@@ -248,7 +248,7 @@ export const api = {
   },
 
   // Payments
-  async createPayment(bookingId: number, paymentMethod: string = 'MOCK_UPI'): Promise<PaymentResponse> {
+  async createPayment(bookingId: number, paymentMethod: string = 'RAZORPAY_PAYMENT_LINK'): Promise<PaymentResponse> {
     return request<PaymentResponse>('/api/payments', {
       method: 'POST',
       body: JSON.stringify({
