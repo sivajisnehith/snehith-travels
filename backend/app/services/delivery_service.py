@@ -200,6 +200,7 @@ class PaymentLinkDeliveryService:
                             "message": f"Payment link dispatched via Meta WhatsApp hello_world to {normalized_phone} (Message ID: {msg_id}).",
                         }
 
+                    logger.warning("Template hello_world returned %s (%s)", hw_resp.status_code, hw_data)
                     err_info = data.get("error") or hw_data.get("error") or {}
                     err_msg = err_info.get("message", f"HTTP {resp.status_code}: {resp.text}")
                     return {
