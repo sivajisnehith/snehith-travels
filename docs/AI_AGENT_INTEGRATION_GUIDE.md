@@ -35,7 +35,7 @@ sequenceDiagram
 
     Agent->>Backend: POST /api/payments/deliver-link {booking_id, channel: "WHATSAPP", destination: "+91..."}
     Backend->>Razorpay: Create Order (`order_...`) & Generate Hosted URL
-    Backend->>Meta: POST /messages (Template: jaspers_market_order_confirmation_v1)
+    Backend->>Meta: POST /messages (Template: snehith_travels_payment_link)
     Meta-->>Customer: WhatsApp Message with Booking Ref & Payment URL
     Backend-->>Agent: Returns delivery_status: "SENT", message_id: "wamid..."
 
@@ -63,13 +63,14 @@ sequenceDiagram
 > - **Pre-approved Template (`type: "template"`)**: **Required** for all outbound business notifications (payment links, order confirmations, tickets). Delivered reliably to any valid WhatsApp number.
 
 ### 3.3 Active Template Specification
-* **Template Name**: `jaspers_market_order_confirmation_v1`
+* **Template Name**: `snehith_travels_payment_link` (or the value of `WHATSAPP_PAYMENT_TEMPLATE_NAME`)
 * **Language**: `en_US`
 * **Parameters**:
   1. `{{1}}` (*Text*): Customer / Passenger Name (defaults to `"Customer"`).
   2. `{{2}}` (*Text*): Booking Reference (e.g. `"ST-YW3RJR"`).
   3. `{{3}}` (*Text*): Fare and Payment URL (e.g. `"Amount: Rs 499 | Pay: https://opsfusionn.online/payment?booking_id=37"`).
-* **Automatic Fallback**: If the primary template encounters an error, the system automatically falls back to `hello_world`.
+* **Suggested body**: `Hello {{1}}, your Snehith Travels booking {{2}} is awaiting payment. Fare and secure payment link: {{3}}. Complete payment to confirm your seat.`
+* **No generic fallback**: A failed template send is reported as failed, rather than sending an unrelated greeting or retail message.
 
 ### 3.4 Phone Number Normalization
 * **Indian Mobile Format**: All numbers are sanitized to 10 digits starting with `6`, `7`, `8`, or `9`.

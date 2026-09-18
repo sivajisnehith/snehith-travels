@@ -110,12 +110,15 @@ class PaymentLinkDeliveryService:
             # In WhatsApp Cloud API, outbound business notifications (especially from a test/developer number)
             # MUST be sent using an approved Template. Freeform text messages outside a 24-hr user-initiated window
             # are silently dropped by Meta's network.
+            template_name = getattr(
+                settings, "WHATSAPP_PAYMENT_TEMPLATE_NAME", "snehith_travels_payment_link"
+            )
             template_payload = {
                 "messaging_product": "whatsapp",
                 "to": normalized_phone,
                 "type": "template",
                 "template": {
-                    "name": "jaspers_market_order_confirmation_v1",
+                    "name": template_name,
                     "language": {"code": "en_US"},
                     "components": [
                         {
@@ -174,34 +177,8 @@ class PaymentLinkDeliveryService:
                             "message": f"Payment link successfully dispatched via Meta WhatsApp template to {normalized_phone} (Message ID: {msg_id}).",
                         }
 
-                    # Fallback to hello_world template if jaspers template failed
-                    logger.warning("Template jaspers_market_order_confirmation_v1 returned %s (%s). Trying hello_world...", resp.status_code, data)
-                    hw_payload = {
-                        "messaging_product": "whatsapp",
-                        "to": normalized_phone,
-                        "type": "template",
-                        "template": {
-                            "name": "hello_world",
-                            "language": {"code": "en_US"},
-                        },
-                    }
-                    hw_resp = client.post(url, headers=headers, json=hw_payload)
-                    hw_data = hw_resp.json() if hw_resp.content else {}
-                    if hw_resp.status_code in [200, 201] and "messages" in hw_data:
-                        msg_id = hw_data["messages"][0]["id"]
-                        return {
-                            "delivery_status": "SENT",
-                            "channel": "WHATSAPP",
-                            "destination": normalized_phone,
-                            "payment_url": payment_url,
-                            "booking_reference": booking_reference,
-                            "amount": amount,
-                            "message_id": msg_id,
-                            "message": f"Payment link dispatched via Meta WhatsApp hello_world to {normalized_phone} (Message ID: {msg_id}).",
-                        }
-
-                    logger.warning("Template hello_world returned %s (%s)", hw_resp.status_code, hw_data)
-                    err_info = data.get("error") or hw_data.get("error") or {}
+                    logger.warning("Template %s returned %s (%s)", template_name, resp.status_code, data)
+                    err_info = data.get("error") or {}
                     err_msg = err_info.get("message", f"HTTP {resp.status_code}: {resp.text}")
                     return {
                         "delivery_status": "FAILED",

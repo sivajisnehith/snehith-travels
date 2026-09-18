@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     WHATSAPP_API_TOKEN: Optional[str] = "EAAPO0LpiQ4cBSomoErVw8nFrWK5J6pFnahMg5bryofI0cDZA6zH8gZCvUMF14PPq6bDRGRa4dTMZCQIWgiAGanwh94GEnTH0Dm3RrzXVEo6vEdr2oImfWWH0gmJQgjGpp7cKpaqobV6AZBEjMz4ZBm8h3c4a0KeecXe8nWFg2fxZBWxPZAi61HfxUsHG5OqIR9cogZDZD"
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = "1341186229071206"
     WHATSAPP_API_VERSION: str = "v22.0"
+    # Must match an approved Meta WhatsApp template for Snehith Travels.
+    WHATSAPP_PAYMENT_TEMPLATE_NAME: str = "snehith_travels_payment_link"
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     
     @property

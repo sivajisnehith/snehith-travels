@@ -33,6 +33,7 @@ services:
       - WHATSAPP_API_TOKEN=${WHATSAPP_API_TOKEN:-}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
       - WHATSAPP_API_VERSION=${WHATSAPP_API_VERSION:-v22.0}
+      - WHATSAPP_PAYMENT_TEMPLATE_NAME=${WHATSAPP_PAYMENT_TEMPLATE_NAME:-snehith_travels_payment_link}
     depends_on:
       postgres:
         condition: service_healthy
