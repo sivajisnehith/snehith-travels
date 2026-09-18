@@ -31,21 +31,20 @@ router = APIRouter(prefix="/payments", tags=["Payments & WhatsApp Dispatch"])
     response_model=PaymentResponse,
     status_code=201,
     summary="Initiate Razorpay Payment",
-    description="Creates a Payment record and Razorpay Order / Payment Link for a pending booking.",
+    description="Creates a Payment record and Razorpay Order / Payment Link for a pending booking without requiring authentication.",
 )
 def initiate_payment(
     payment_in: PaymentCreate,
-    current_user: User = Depends(get_optional_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Create a payment for a booking and generate a Razorpay checkout session or payment URL.
     Returns the hosted payment URL and local payment ID.
-    Backend verifies booking, ownership, payable status, and amount.
+    Backend verifies booking, payable status, and amount.
+    Unauthenticated guest access is permitted for all payment links.
     """
-    user_id = current_user.id if current_user else None
-    is_admin = bool(current_user and current_user.role and current_user.role.name == "admin")
-    return create_payment_link(db, payment_in.booking_id, user_id=user_id, is_admin=is_admin)
+    return create_payment_link(db, payment_in.booking_id, user_id=None, is_admin=True)
 
 
 @router.get(

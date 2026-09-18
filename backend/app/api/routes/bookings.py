@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_user, get_current_admin
+from app.api.deps import get_db, get_current_user, get_current_admin, get_optional_current_user
 from app.models.user import User
 from app.schemas.booking import (
     BookingCreate,
@@ -57,13 +57,11 @@ def get_user_bookings(
 @router.get("/{booking_id}", response_model=BookingDetailResponse)
 def get_single_booking(
     booking_id: str = Path(..., description="Booking ID or Booking Reference, e.g. ST-8F4K92"),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get booking details by ID or reference code."""
-    # Allow admins to view any booking, or customer to view their own
-    user_id = None if (current_user.role and current_user.role.name == "admin") else current_user.id
-    return get_booking_detail(db, booking_id, user_id=user_id)
+    """Get booking details by ID or reference code without requiring authentication."""
+    return get_booking_detail(db, booking_id, user_id=None)
 
 
 @router.post("/{booking_id}/cancel", response_model=BookingCancelResponse)

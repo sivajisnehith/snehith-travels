@@ -94,8 +94,8 @@ def test_payment_invalid_booking(client):
     assert "not found" in res.json()["detail"].lower()
 
 
-# 3. Unauthorized booking
-def test_payment_unauthorized_booking(client):
+# 3. Unauthenticated and third-party payment allowed
+def test_payment_unauthenticated_and_third_party_allowed(client):
     # User 1 registers and books
     client.post(
         "/api/auth/register",
@@ -104,20 +104,14 @@ def test_payment_unauthorized_booking(client):
     token_owner = get_auth_token(client, "owner@example.com", "Password123!")
     booking, _, _ = create_test_booking(client, token_owner, "2026-11-16")
 
-    # User 2 registers and tries to pay for User 1's booking
-    client.post(
-        "/api/auth/register",
-        json={"name": "Hacker User", "email": "hacker@example.com", "password": "Password123!"},
-    )
-    token_attacker = get_auth_token(client, "hacker@example.com", "Password123!")
-
-    res = client.post(
+    # Guest user without any token tries to initiate payment for booking
+    guest_res = client.post(
         "/api/payments",
-        headers={"Authorization": f"Bearer {token_attacker}"},
         json={"booking_id": booking["id"]},
     )
-    assert res.status_code == 403
-    assert "not authorized" in res.json()["detail"].lower()
+    assert guest_res.status_code == 201
+    assert guest_res.json()["booking_id"] == booking["id"]
+    assert "payment_url" in guest_res.json()
 
 
 # 4. Correct backend amount & 6. Payment record persistence
