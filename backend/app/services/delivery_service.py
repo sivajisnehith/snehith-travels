@@ -107,36 +107,62 @@ class PaymentLinkDeliveryService:
                 "Content-Type": "application/json",
             }
 
-            # First attempt: Rich text message with preview URL containing full details & link
-            text_body = (
-                f"🚌 *Snehith Travels - Payment Link*\n\n"
-                f"Dear Customer,\n"
-                f"Your booking reservation *{booking_reference}* is ready.\n\n"
-                f"• *Amount Due:* ₹{amount:,.2f}\n"
-                f"• *Payment Link:* {payment_url}\n\n"
-                f"Please click the link above to complete your payment securely via UPI, Card, or Net Banking.\n"
-                f"Thank you for choosing Snehith Travels!"
-            )
-
-            text_payload = {
+            # In WhatsApp Cloud API, outbound business notifications (especially from a test/developer number)
+            # MUST be sent using an approved Template. Freeform text messages outside a 24-hr user-initiated window
+            # are silently dropped by Meta's network.
+            template_payload = {
                 "messaging_product": "whatsapp",
                 "to": normalized_phone,
-                "type": "text",
-                "text": {
-                    "preview_url": True,
-                    "body": text_body,
+                "type": "template",
+                "template": {
+                    "name": "jaspers_market_order_confirmation_v1",
+                    "language": {"code": "en_US"},
+                    "components": [
+                        {
+                            "type": "body",
+                            "parameters": [
+                                {"type": "text", "text": "Customer"},
+                                {"type": "text", "text": str(booking_reference)},
+                                {"type": "text", "text": f"Amount: Rs {amount:,.0f} | Pay: {payment_url}"},
+                            ],
+                        }
+                    ],
                 },
             }
 
             try:
                 with httpx.Client(timeout=15.0) as client:
-                    resp = client.post(url, headers=headers, json=text_payload)
+                    # 1. Dispatch primary approved template message
+                    resp = client.post(url, headers=headers, json=template_payload)
                     data = resp.json() if resp.content else {}
 
-                    # If text message was accepted:
                     if resp.status_code in [200, 201] and "messages" in data:
                         msg_id = data["messages"][0]["id"]
-                        logger.info("WhatsApp payment link sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
+                        logger.info("WhatsApp template sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
+
+                        # Also attempt companion rich text if active session exists (non-blocking)
+                        try:
+                            text_payload = {
+                                "messaging_product": "whatsapp",
+                                "to": normalized_phone,
+                                "type": "text",
+                                "text": {
+                                    "preview_url": True,
+                                    "body": (
+                                        f"🚌 *Snehith Travels - Payment Link*\n\n"
+                                        f"Dear Customer,\n"
+                                        f"Your booking reservation *{booking_reference}* is ready.\n\n"
+                                        f"• *Amount Due:* ₹{amount:,.2f}\n"
+                                        f"• *Payment Link:* {payment_url}\n\n"
+                                        f"Please click the link above to complete your payment securely via UPI, Card, or Net Banking.\n"
+                                        f"Thank you for choosing Snehith Travels!"
+                                    ),
+                                },
+                            }
+                            client.post(url, headers=headers, json=text_payload)
+                        except Exception:
+                            pass
+
                         return {
                             "delivery_status": "SENT",
                             "channel": "WHATSAPP",
@@ -145,37 +171,24 @@ class PaymentLinkDeliveryService:
                             "booking_reference": booking_reference,
                             "amount": amount,
                             "message_id": msg_id,
-                            "message": f"Payment link successfully dispatched via Meta WhatsApp to {normalized_phone} (Message ID: {msg_id}).",
+                            "message": f"Payment link successfully dispatched via Meta WhatsApp template to {normalized_phone} (Message ID: {msg_id}).",
                         }
 
-                    # If freeform text rejected (e.g. outside customer service window), fallback to pre-approved template:
-                    logger.warning("Meta text dispatch returned %s (%s). Attempting template fallback...", resp.status_code, data)
-                    template_payload = {
+                    # Fallback to hello_world template if jaspers template failed
+                    logger.warning("Template jaspers_market_order_confirmation_v1 returned %s (%s). Trying hello_world...", resp.status_code, data)
+                    hw_payload = {
                         "messaging_product": "whatsapp",
                         "to": normalized_phone,
                         "type": "template",
                         "template": {
-                            "name": "jaspers_market_order_confirmation_v1",
+                            "name": "hello_world",
                             "language": {"code": "en_US"},
-                            "components": [
-                                {
-                                    "type": "body",
-                                    "parameters": [
-                                        {"type": "text", "text": "Customer"},
-                                        {"type": "text", "text": f"{booking_reference} (Pay: {payment_url})"},
-                                        {"type": "text", "text": f"₹{amount:,.2f}"},
-                                    ],
-                                }
-                            ],
                         },
                     }
-
-                    template_resp = client.post(url, headers=headers, json=template_payload)
-                    t_data = template_resp.json() if template_resp.content else {}
-
-                    if template_resp.status_code in [200, 201] and "messages" in t_data:
-                        msg_id = t_data["messages"][0]["id"]
-                        logger.info("WhatsApp template sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
+                    hw_resp = client.post(url, headers=headers, json=hw_payload)
+                    hw_data = hw_resp.json() if hw_resp.content else {}
+                    if hw_resp.status_code in [200, 201] and "messages" in hw_data:
+                        msg_id = hw_data["messages"][0]["id"]
                         return {
                             "delivery_status": "SENT",
                             "channel": "WHATSAPP",
@@ -184,11 +197,10 @@ class PaymentLinkDeliveryService:
                             "booking_reference": booking_reference,
                             "amount": amount,
                             "message_id": msg_id,
-                            "message": f"Payment notification dispatched via Meta WhatsApp template to {normalized_phone} (Message ID: {msg_id}).",
+                            "message": f"Payment link dispatched via Meta WhatsApp hello_world to {normalized_phone} (Message ID: {msg_id}).",
                         }
 
-                    # If both failed, extract error message
-                    err_info = data.get("error") or t_data.get("error") or {}
+                    err_info = data.get("error") or hw_data.get("error") or {}
                     err_msg = err_info.get("message", f"HTTP {resp.status_code}: {resp.text}")
                     return {
                         "delivery_status": "FAILED",
