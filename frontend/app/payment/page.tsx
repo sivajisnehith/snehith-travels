@@ -153,7 +153,7 @@ function PaymentPageContent() {
       const customerPhone = currentUser?.phone || '9999999999';
 
       const options = {
-        key: 'rzp_test_Tcz7Z70RAqZvXw',
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_Tcz7Z70RAqZvXw',
         amount: Math.round(booking.total_amount * 100),
         currency: 'INR',
         name: 'Snehith Travels',
