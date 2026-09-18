@@ -43,19 +43,21 @@ class MockPaymentUpdate(BaseModel):
 
 
 class PaymentDeliveryRequest(BaseModel):
-    payment_id: int
-    channel: str = Field(..., description="WHATSAPP or TELEGRAM")
-    destination: str = Field(..., description="Phone number with country code or handle")
+    booking_id: Optional[int] = Field(None, description="Booking ID to deliver payment link for (optional if payment_id provided)")
+    payment_id: Optional[int] = Field(None, description="Payment ID to deliver payment link for (optional if booking_id provided)")
+    channel: str = Field(default="WHATSAPP", description="Delivery channel: 'WHATSAPP' (Meta Cloud API) or 'TELEGRAM'")
+    destination: str = Field(..., description="Recipient phone number (e.g. 10-digit Indian mobile 9876543210 or 919876543210)")
 
 
 class PaymentDeliveryResponse(BaseModel):
-    delivery_status: str  # SENT, NOT_CONFIGURED, FAILED
-    channel: str
-    destination: str
-    payment_url: str
-    booking_reference: str
-    amount: float
-    message: str
+    delivery_status: str = Field(..., description="Status: 'SENT', 'NOT_CONFIGURED', or 'FAILED'")
+    channel: str = Field(..., description="Messaging channel utilized ('WHATSAPP' or 'TELEGRAM')")
+    destination: str = Field(..., description="Normalized destination phone number")
+    payment_url: str = Field(..., description="Hosted Razorpay or portal payment URL sent to recipient")
+    booking_reference: str = Field(..., description="Unique booking reservation reference")
+    amount: float = Field(..., description="Total payable amount in INR")
+    message: str = Field(..., description="Human and AI-readable confirmation or status detail")
+    message_id: Optional[str] = Field(None, description="Meta WhatsApp message ID (wamid) if available")
 
 
 class WebhookResponse(BaseModel):

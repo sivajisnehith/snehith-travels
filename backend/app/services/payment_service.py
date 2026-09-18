@@ -130,7 +130,7 @@ def create_payment_link(
     }
 
     provider_link_id = f"plink_{uuid.uuid4().hex[:14]}"
-    hosted_payment_url = f"https://rzp.io/i/{uuid.uuid4().hex[:8]}"
+    hosted_payment_url = f"{settings.FRONTEND_URL}/payment?booking_id={booking.id}"
 
     # Attempt to call Razorpay API
     try:
@@ -142,9 +142,31 @@ def create_payment_link(
             and not settings.RAZORPAY_KEY_SECRET.startswith("placeholder")
         ):
             client = get_razorpay_client()
-            rzp_response = client.payment_link.create(payment_link_data)
-            provider_link_id = rzp_response.get("id", provider_link_id)
-            hosted_payment_url = rzp_response.get("short_url", hosted_payment_url)
+
+            # 1. Create a Razorpay Order (no limit of 30 in test mode)
+            try:
+                order_data = {
+                    "amount": amount_in_paise,
+                    "currency": "INR",
+                    "receipt": booking.booking_reference,
+                    "notes": {
+                        "booking_id": str(booking.id),
+                        "booking_reference": booking.booking_reference,
+                    },
+                }
+                rzp_order = client.order.create(order_data)
+                provider_link_id = rzp_order.get("id", provider_link_id)
+            except Exception as order_err:
+                logger.warning("Could not create Razorpay Order: %s", order_err)
+
+            # 2. Try creating a hosted payment link if available
+            try:
+                rzp_response = client.payment_link.create(payment_link_data)
+                provider_link_id = rzp_response.get("id", provider_link_id)
+                hosted_payment_url = rzp_response.get("short_url", hosted_payment_url)
+            except Exception as link_err:
+                logger.info("Razorpay Payment Link creation skipped or limited (%s). Using portal checkout.", link_err)
+                hosted_payment_url = f"{settings.FRONTEND_URL}/payment?booking_id={booking.id}"
         else:
             logger.info(
                 "Using Razorpay Sandbox payment link mode for booking %s",
@@ -153,20 +175,10 @@ def create_payment_link(
     except Exception as e:
         err_str = str(e)
         logger.warning(
-            "Razorpay API call exception (%s). Attempting reference lookup or fallback.",
+            "Razorpay API call exception (%s). Using fallback portal checkout.",
             err_str,
         )
-        if "already exists" in err_str:
-            try:
-                client = get_razorpay_client()
-                rzp_links = client.payment_link.all({"count": 10})
-                for link in rzp_links.get("payment_links", []):
-                    if link.get("reference_id") == booking.booking_reference:
-                        provider_link_id = link.get("id", provider_link_id)
-                        hosted_payment_url = link.get("short_url", hosted_payment_url)
-                        break
-            except Exception as lookup_err:
-                logger.debug("Failed to lookup existing Razorpay link: %s", lookup_err)
+        hosted_payment_url = f"{settings.FRONTEND_URL}/payment?booking_id={booking.id}"
 
     # 8. Persist Payment record
     if existing_payment:

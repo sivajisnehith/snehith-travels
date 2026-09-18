@@ -274,6 +274,27 @@ export const api = {
     });
   },
 
+  async deliverPaymentLink(data: {
+    booking_id?: number;
+    payment_id?: number;
+    channel?: string;
+    destination: string;
+  }): Promise<{
+    delivery_status: string;
+    channel: string;
+    destination: string;
+    payment_url: string;
+    booking_reference: string;
+    amount: number;
+    message: string;
+    message_id?: string;
+  }> {
+    return request('/api/payments/deliver-link', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   // Tickets
   async getTicket(bookingIdOrRef: string): Promise<DigitalTicket> {
     return request<DigitalTicket>(`/api/tickets/${bookingIdOrRef}`);

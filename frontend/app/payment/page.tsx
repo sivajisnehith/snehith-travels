@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, getStoredUser } from '@/lib/api';
 import { BookingDetail, PaymentResponse } from '@/types';
 
 export default function PaymentPage() {
@@ -116,10 +116,107 @@ function PaymentPageContent() {
     }
   };
 
-  const handlePayNow = () => {
-    if (payment?.payment_url) {
-      // Open Razorpay hosted payment link
-      window.location.href = payment.payment_url;
+  const [simulating, setSimulating] = useState(false);
+
+  const handlePayWithRazorpay = () => {
+    if (!booking) return;
+
+    // Dynamically load Razorpay standard checkout script if not present
+    const loadRazorpayScript = () => {
+      return new Promise<boolean>((resolve) => {
+        if ((window as any).Razorpay) {
+          resolve(true);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+    };
+
+    loadRazorpayScript().then((loaded) => {
+      if (!loaded || !(window as any).Razorpay) {
+        if (payment?.payment_url && !payment.payment_url.includes(window.location.host)) {
+          window.location.href = payment.payment_url;
+        } else {
+          setError('Could not load Razorpay checkout script. Please check your internet connection.');
+        }
+        return;
+      }
+
+      const currentUser = getStoredUser();
+      const customerName = booking?.passengers?.[0]?.name || currentUser?.name || 'Traveler';
+      const customerEmail = currentUser?.email || 'customer@snehithtravels.com';
+      const customerPhone = currentUser?.phone || '9999999999';
+
+      const options = {
+        key: 'rzp_test_Tcz7Z70RAqZvXw',
+        amount: Math.round(booking.total_amount * 100),
+        currency: 'INR',
+        name: 'Snehith Travels',
+        description: `Booking #${booking.booking_reference}`,
+        order_id: payment?.provider_payment_id?.startsWith('order_') ? payment.provider_payment_id : undefined,
+        prefill: {
+          name: customerName,
+          email: customerEmail,
+          contact: customerPhone,
+        },
+        notes: {
+          booking_id: booking.id.toString(),
+          booking_reference: booking.booking_reference,
+        },
+        theme: {
+          color: '#2563eb',
+        },
+        handler: async function () {
+          setVerifying(true);
+          try {
+            const payId = payment?.id || booking.payment_id;
+            if (payId) {
+              await api.mockPaymentSuccess(payId);
+            }
+            await handleCheckStatus();
+          } catch (e: any) {
+            setError(e.message || 'Payment completed but verification failed. Please refresh.');
+          } finally {
+            setVerifying(false);
+          }
+        },
+      };
+
+      try {
+        const rzpInstance = new (window as any).Razorpay(options);
+        rzpInstance.on('payment.failed', function (resp: any) {
+          setError(resp.error?.description || 'Razorpay payment failed or was cancelled.');
+        });
+        rzpInstance.open();
+      } catch (err: any) {
+        setError(err.message || 'Failed to open Razorpay modal.');
+      }
+    });
+  };
+
+  const handleSimulateSuccess = async () => {
+    const payId = payment?.id || booking?.payment_id;
+    if (!payId) return;
+
+    setSimulating(true);
+    setError(null);
+    try {
+      await api.mockPaymentSuccess(payId);
+      const updatedPayment = await api.getPayment(payId);
+      setPayment(updatedPayment);
+      if (bookingId) {
+        const updatedBooking = await api.getBooking(bookingId);
+        setBooking(updatedBooking);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Simulation failed.');
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -263,34 +360,51 @@ function PaymentPageContent() {
         {/* STATE 4: PENDING PAYMENT */}
         {isPending && (
           <div className="space-y-4">
-            {payment?.payment_url && (
-              <div className="space-y-3">
+            <div className="space-y-3">
+              {/* Primary: Real Razorpay Modal Checkout */}
+              <button
+                type="button"
+                onClick={handlePayWithRazorpay}
+                className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>💳</span> Pay ₹{booking?.total_amount} via Razorpay (UPI, Cards, NetBanking)
+              </button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-zinc-200"></div>
+                <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Or Instant Test Mode Simulation
+                </span>
+                <div className="flex-grow border-t border-zinc-200"></div>
+              </div>
+
+              {/* Instant Sandbox Pay Button */}
+              <button
+                type="button"
+                disabled={simulating}
+                onClick={handleSimulateSuccess}
+                className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <span>⚡</span> {simulating ? 'Processing Sandbox Payment...' : `Instant Sandbox Pay ₹${booking?.total_amount} (Confirm & Generate Ticket)`}
+              </button>
+
+              <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 px-1">
+                <span>Provider: Razorpay Sandbox</span>
                 <button
                   type="button"
-                  onClick={handlePayNow}
-                  className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={verifying}
+                  onClick={handleCheckStatus}
+                  className="font-bold text-blue-600 hover:underline cursor-pointer"
                 >
-                  <span>💳</span> Pay ₹{booking?.total_amount} via Razorpay Hosted Page
+                  {verifying ? 'Verifying with backend...' : 'I have completed payment (Verify)'}
                 </button>
-
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 px-1">
-                  <span>Provider: Razorpay Sandbox</span>
-                  <button
-                    type="button"
-                    disabled={verifying}
-                    onClick={handleCheckStatus}
-                    className="font-bold text-blue-600 hover:underline cursor-pointer"
-                  >
-                    {verifying ? 'Verifying with backend...' : 'I have completed payment (Verify)'}
-                  </button>
-                </div>
               </div>
-            )}
+            </div>
 
             <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-[11px] text-zinc-600 space-y-1 mt-4">
               <div className="font-bold text-zinc-800">ℹ️ Secure Payment with Razorpay:</div>
               <p>
-                Click <strong>Pay via Razorpay Hosted Page</strong> above to complete your booking securely using UPI, Credit/Debit Cards, Net Banking, or Wallets. Once payment is confirmed, your booking will be confirmed automatically and your digital boarding pass will be generated.
+                Click <strong>Pay via Razorpay</strong> to open the official checkout popup directly on screen and complete your booking with UPI, Cards, or NetBanking. For rapid testing, you can also use <strong>Instant Sandbox Pay</strong>.
               </p>
             </div>
           </div>

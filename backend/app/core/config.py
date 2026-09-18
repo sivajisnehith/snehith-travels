@@ -29,9 +29,10 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = "placeholder_webhook_secret"
     FRONTEND_URL: str = "http://localhost:3000"
 
-    # Messaging Delivery Service (WhatsApp / Telegram)
-    WHATSAPP_API_TOKEN: Optional[str] = None
-    WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
+    # Meta WhatsApp Cloud API
+    WHATSAPP_API_TOKEN: Optional[str] = "EAAPO0LpiQ4cBSnq6ykrNlq9DlC5Jvz22hTGBwfK5KHpTrJ90w5cxCJwlOZBGes2kz5NZCZAprrch51SOOhfOffZATxzn2ug3dR8JM3EhiK6JIvPPnMKTo4rxi80o83oted0k1Xnk8SolQ8XOTNqlBLlmxqhPoumzHFz9nOoFJRI7mFs7ZB4MXvIHejW9fxFqy9S3cru1AoEsd3F97KZAdLDN5d2ro6tM32S4wAATY5WZClS0s6p8fxZBdKkuWEa5fzEsSVZBFXtMtxXR57ZBo68Sv3gnzAHgZDZD"
+    WHATSAPP_PHONE_NUMBER_ID: Optional[str] = "1341186229071206"
+    WHATSAPP_API_VERSION: str = "v22.0"
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     
     @property

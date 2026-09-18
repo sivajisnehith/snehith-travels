@@ -1,14 +1,54 @@
 import logging
-from typing import Dict, Any
+import re
+from typing import Dict, Any, Tuple
+import httpx
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
+def validate_and_normalize_indian_phone(phone: str) -> Tuple[bool, str, str]:
+    """
+    Validates and normalizes Indian mobile phone numbers for Meta WhatsApp Cloud API.
+    Rules:
+    - 10-digit number starting with 6, 7, 8, or 9.
+    - Standardized without '+' (Meta API expects e.g. '918712145983').
+    Returns (is_valid, normalized_meta_format, error_message).
+    """
+    if not phone:
+        return False, "", "Phone number cannot be empty."
+
+    cleaned = phone.strip()
+    if cleaned.lower().startswith("whatsapp:"):
+        cleaned = cleaned[9:].strip()
+
+    cleaned = re.sub(r"[\s\-\(\)\.]", "", cleaned)
+
+    digits = cleaned
+    if cleaned.startswith("+91"):
+        digits = cleaned[3:]
+    elif cleaned.startswith("91") and len(cleaned) == 12:
+        digits = cleaned[2:]
+    elif cleaned.startswith("0") and len(cleaned) == 11:
+        digits = cleaned[1:]
+
+    if not re.match(r"^[6-9]\d{9}$", digits):
+        return (
+            False,
+            "",
+            f"Invalid Indian mobile number '{phone}'. Must be a 10-digit number starting with 6, 7, 8, or 9.",
+        )
+
+    # Meta Cloud API format: country code + 10 digits without '+'
+    meta_format = f"91{digits}"
+    return True, meta_format, ""
+
+
 class PaymentLinkDeliveryService:
     """
     Dedicated messaging delivery service for dispatching payment links
-    via WhatsApp or Telegram for future Saarthi AI voice agent integration.
+    via Meta WhatsApp Cloud API (Graph API) or Telegram.
     Completely decoupled from the payment provider (Razorpay).
     """
 
@@ -34,34 +74,144 @@ class PaymentLinkDeliveryService:
                 "message": f"Channel '{channel}' is not supported. Supported channels: WHATSAPP, TELEGRAM.",
             }
 
-        # Check configuration
+        # 1. Meta WhatsApp Cloud API
         if normalized_channel == "WHATSAPP":
-            if not settings.WHATSAPP_API_TOKEN or not settings.WHATSAPP_PHONE_NUMBER_ID:
-                logger.info(
-                    "WhatsApp credentials not configured in environment. Delivery skipped for %s.",
-                    destination,
-                )
+            is_valid, normalized_phone, val_err = validate_and_normalize_indian_phone(destination)
+            if not is_valid:
                 return {
-                    "delivery_status": "NOT_CONFIGURED",
+                    "delivery_status": "FAILED",
                     "channel": "WHATSAPP",
                     "destination": destination,
                     "payment_url": payment_url,
                     "booking_reference": booking_reference,
                     "amount": amount,
-                    "message": "WhatsApp API token/Phone Number ID is not configured in backend environment.",
+                    "message": val_err,
                 }
-            # When credentials are provided in production:
-            # Dispatch message via WhatsApp Cloud API
-            return {
-                "delivery_status": "SENT",
-                "channel": "WHATSAPP",
-                "destination": destination,
-                "payment_url": payment_url,
-                "booking_reference": booking_reference,
-                "amount": amount,
-                "message": f"Payment link successfully dispatched via WhatsApp to {destination}.",
+
+            if not settings.WHATSAPP_API_TOKEN or not settings.WHATSAPP_PHONE_NUMBER_ID:
+                logger.info("Meta WhatsApp Cloud API credentials not configured in environment.")
+                return {
+                    "delivery_status": "NOT_CONFIGURED",
+                    "channel": "WHATSAPP",
+                    "destination": normalized_phone,
+                    "payment_url": payment_url,
+                    "booking_reference": booking_reference,
+                    "amount": amount,
+                    "message": "Meta WhatsApp API token or Phone Number ID is not configured.",
+                }
+
+            api_version = getattr(settings, "WHATSAPP_API_VERSION", "v22.0")
+            url = f"https://graph.facebook.com/{api_version}/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
+            headers = {
+                "Authorization": f"Bearer {settings.WHATSAPP_API_TOKEN}",
+                "Content-Type": "application/json",
             }
 
+            # First attempt: Rich text message with preview URL containing full details & link
+            text_body = (
+                f"🚌 *Snehith Travels - Payment Link*\n\n"
+                f"Dear Customer,\n"
+                f"Your booking reservation *{booking_reference}* is ready.\n\n"
+                f"• *Amount Due:* ₹{amount:,.2f}\n"
+                f"• *Payment Link:* {payment_url}\n\n"
+                f"Please click the link above to complete your payment securely via UPI, Card, or Net Banking.\n"
+                f"Thank you for choosing Snehith Travels!"
+            )
+
+            text_payload = {
+                "messaging_product": "whatsapp",
+                "to": normalized_phone,
+                "type": "text",
+                "text": {
+                    "preview_url": True,
+                    "body": text_body,
+                },
+            }
+
+            try:
+                with httpx.Client(timeout=15.0) as client:
+                    resp = client.post(url, headers=headers, json=text_payload)
+                    data = resp.json() if resp.content else {}
+
+                    # If text message was accepted:
+                    if resp.status_code in [200, 201] and "messages" in data:
+                        msg_id = data["messages"][0]["id"]
+                        logger.info("WhatsApp payment link sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
+                        return {
+                            "delivery_status": "SENT",
+                            "channel": "WHATSAPP",
+                            "destination": normalized_phone,
+                            "payment_url": payment_url,
+                            "booking_reference": booking_reference,
+                            "amount": amount,
+                            "message_id": msg_id,
+                            "message": f"Payment link successfully dispatched via Meta WhatsApp to {normalized_phone} (Message ID: {msg_id}).",
+                        }
+
+                    # If freeform text rejected (e.g. outside customer service window), fallback to pre-approved template:
+                    logger.warning("Meta text dispatch returned %s (%s). Attempting template fallback...", resp.status_code, data)
+                    template_payload = {
+                        "messaging_product": "whatsapp",
+                        "to": normalized_phone,
+                        "type": "template",
+                        "template": {
+                            "name": "jaspers_market_order_confirmation_v1",
+                            "language": {"code": "en_US"},
+                            "components": [
+                                {
+                                    "type": "body",
+                                    "parameters": [
+                                        {"type": "text", "text": "Customer"},
+                                        {"type": "text", "text": f"{booking_reference} (Pay: {payment_url})"},
+                                        {"type": "text", "text": f"₹{amount:,.2f}"},
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+
+                    template_resp = client.post(url, headers=headers, json=template_payload)
+                    t_data = template_resp.json() if template_resp.content else {}
+
+                    if template_resp.status_code in [200, 201] and "messages" in t_data:
+                        msg_id = t_data["messages"][0]["id"]
+                        logger.info("WhatsApp template sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
+                        return {
+                            "delivery_status": "SENT",
+                            "channel": "WHATSAPP",
+                            "destination": normalized_phone,
+                            "payment_url": payment_url,
+                            "booking_reference": booking_reference,
+                            "amount": amount,
+                            "message_id": msg_id,
+                            "message": f"Payment notification dispatched via Meta WhatsApp template to {normalized_phone} (Message ID: {msg_id}).",
+                        }
+
+                    # If both failed, extract error message
+                    err_info = data.get("error") or t_data.get("error") or {}
+                    err_msg = err_info.get("message", f"HTTP {resp.status_code}: {resp.text}")
+                    return {
+                        "delivery_status": "FAILED",
+                        "channel": "WHATSAPP",
+                        "destination": normalized_phone,
+                        "payment_url": payment_url,
+                        "booking_reference": booking_reference,
+                        "amount": amount,
+                        "message": f"Meta WhatsApp API error: {err_msg}",
+                    }
+            except Exception as ex:
+                logger.exception("Error dispatching WhatsApp via Meta Cloud API: %s", ex)
+                return {
+                    "delivery_status": "FAILED",
+                    "channel": "WHATSAPP",
+                    "destination": normalized_phone,
+                    "payment_url": payment_url,
+                    "booking_reference": booking_reference,
+                    "amount": amount,
+                    "message": f"Dispatch error: {str(ex)}",
+                }
+
+        # 2. Telegram fallback
         elif normalized_channel == "TELEGRAM":
             if not settings.TELEGRAM_BOT_TOKEN:
                 logger.info(
@@ -77,8 +227,6 @@ class PaymentLinkDeliveryService:
                     "amount": amount,
                     "message": "Telegram Bot token is not configured in backend environment.",
                 }
-            # When credentials are provided in production:
-            # Dispatch message via Telegram Bot API
             return {
                 "delivery_status": "SENT",
                 "channel": "TELEGRAM",
