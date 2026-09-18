@@ -88,7 +88,8 @@ export default function SeatMap({
       </div>
 
       {/* Bus Interior Box */}
-      <div className="max-w-md mx-auto my-6 p-6 rounded-3xl border-2 border-zinc-200 bg-zinc-50/50 shadow-inner">
+      <div className="w-full overflow-x-auto pb-2 my-6">
+        <div className="min-w-[320px] max-w-md mx-auto p-4 sm:p-6 rounded-3xl border-2 border-zinc-200 bg-zinc-50/50 shadow-inner">
         {/* Front of the bus indicator */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-dashed border-zinc-300 text-xs text-zinc-400 font-mono">
           <span>FRONT</span>
@@ -210,6 +211,7 @@ export default function SeatMap({
         <div className="pt-4 mt-4 border-t border-dashed border-zinc-300 text-center text-xs text-zinc-400 font-mono">
           REAR
         </div>
+      </div>
       </div>
     </div>
   );

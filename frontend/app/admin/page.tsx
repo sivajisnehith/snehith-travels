@@ -825,7 +825,7 @@ export default function AdminFleetPage() {
       {/* Deploy Bus Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-zinc-100 my-8">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-zinc-100 my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 mb-6 border-b border-zinc-100">
               <div>
                 <h2 className="text-xl font-black text-zinc-900">Deploy New Bus Service</h2>
@@ -1056,7 +1056,7 @@ export default function AdminFleetPage() {
       {/* WhatsApp Payment Delivery Modal */}
       {deliveryModalBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-zinc-100 my-8 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-8 shadow-2xl border border-zinc-100 my-auto animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 mb-4 border-b border-zinc-100">
               <div className="flex items-center gap-3">

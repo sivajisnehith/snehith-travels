@@ -25,30 +25,30 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white/95 backdrop-blur">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-sm">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg sm:text-xl shadow-sm">
             ST
           </div>
           <div>
-            <span className="text-xl font-extrabold tracking-tight text-zinc-900">Snehith</span>{' '}
-            <span className="text-xl font-bold text-blue-600">Travels</span>
-            <span className="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="text-base sm:text-xl font-extrabold tracking-tight text-zinc-900">Snehith</span>{' '}
+            <span className="text-base sm:text-xl font-bold text-blue-600">Travels</span>
+            <span className="hidden md:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
               Demo Platform
             </span>
           </div>
         </Link>
 
         {/* Navigation */}
-        <nav className="flex items-center gap-4 sm:gap-6">
+        <nav className="flex items-center gap-2 sm:gap-5 shrink-0">
           <Link
             href="/"
-            className="text-sm font-medium text-zinc-600 hover:text-blue-600 transition-colors"
+            className="hidden md:inline-block text-xs sm:text-sm font-medium text-zinc-600 hover:text-blue-600 transition-colors"
           >
             Search Buses
           </Link>
           <Link
             href="/dashboard"
-            className="text-sm font-medium text-zinc-600 hover:text-blue-600 transition-colors"
+            className="hidden sm:inline-block text-xs sm:text-sm font-medium text-zinc-600 hover:text-blue-600 transition-colors"
           >
             My Bookings
           </Link>
@@ -56,7 +56,7 @@ export default function Navbar() {
           {user?.role === 'admin' && (
             <Link
               href="/admin"
-              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-100 text-purple-800 hover:bg-purple-200 border border-purple-300 transition flex items-center gap-1.5 shadow-xs"
+              className="text-xs font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-purple-100 text-purple-800 hover:bg-purple-200 border border-purple-300 transition flex items-center gap-1 sm:gap-1.5 shadow-xs"
             >
               <span>⚙️</span> Fleet Manager
             </Link>

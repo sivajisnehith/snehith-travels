@@ -237,8 +237,8 @@ function PaymentPageContent() {
   const isPending = !isPaid && !isFailed && !isExpired;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 w-full flex-1">
-      <div className="bg-white rounded-3xl border border-zinc-200 p-8 shadow-xl">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12 w-full flex-1 overflow-x-hidden">
+      <div className="bg-white rounded-3xl border border-zinc-200 p-5 sm:p-8 shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between pb-6 border-b border-zinc-100">
           <div>
@@ -365,7 +365,7 @@ function PaymentPageContent() {
               <button
                 type="button"
                 onClick={handlePayWithRazorpay}
-                className="w-full py-4 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-center"
               >
                 <span>💳</span> Pay ₹{booking?.total_amount} via Razorpay (UPI, Cards, NetBanking)
               </button>
@@ -383,7 +383,7 @@ function PaymentPageContent() {
                 type="button"
                 disabled={simulating}
                 onClick={handleSimulateSuccess}
-                className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 sm:py-3.5 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] sm:text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-center"
               >
                 <span>⚡</span> {simulating ? 'Processing Sandbox Payment...' : `Instant Sandbox Pay ₹${booking?.total_amount} (Confirm & Generate Ticket)`}
               </button>

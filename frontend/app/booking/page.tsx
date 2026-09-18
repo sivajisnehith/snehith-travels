@@ -425,8 +425,8 @@ function BookingPageContent() {
 
       {/* Admin WhatsApp Payment Delivery Modal */}
       {showAdminWhatsAppModal && createdBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl max-w-lg w-full p-6 sm:p-7 relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-zinc-200 shadow-2xl max-w-lg w-full p-5 sm:p-7 relative max-h-[90vh] overflow-y-auto my-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-100">
               <div className="flex items-center gap-2.5">
