@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Path, Header, Request, HTTPException, st
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_optional_current_user, get_current_user
 from app.models.user import User
+from app.models.booking import Booking
 from app.models.payment import Payment
 from app.models.seat_hold import SeatHold
 from app.schemas.payment import (
@@ -131,12 +132,22 @@ def deliver_payment_link(
             detail="No payment URL available for this payment.",
         )
 
+    customer_name = "Customer"
+    if payment and payment.booking_id:
+        booking_obj = db.query(Booking).filter(Booking.id == payment.booking_id).first()
+        if booking_obj:
+            if booking_obj.passengers and len(booking_obj.passengers) > 0:
+                customer_name = booking_obj.passengers[0].name
+            elif booking_obj.user:
+                customer_name = booking_obj.user.name
+
     res = delivery_service.send_payment_link(
         channel=delivery_in.channel,
         destination=delivery_in.destination,
         payment_url=payment.payment_url,
         booking_reference=payment.booking_reference,
         amount=payment.amount,
+        customer_name=customer_name,
     )
     return PaymentDeliveryResponse(**res)
 

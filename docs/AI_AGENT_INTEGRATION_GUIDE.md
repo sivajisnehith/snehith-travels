@@ -64,12 +64,12 @@ sequenceDiagram
 
 ### 3.3 Active Template Specification
 * **Template Name**: `snehith_travels_payment_link` (or the value of `WHATSAPP_PAYMENT_TEMPLATE_NAME`)
-* **Language**: `en_US`
+* **Language**: `en` (`English`, matching the approved template in Meta Developer Console)
 * **Parameters**:
-  1. `{{1}}` (*Text*): Customer / Passenger Name (defaults to `"Customer"`).
+  1. `{{1}}` (*Text*): Customer / Passenger Name (defaults to passenger name or `"Customer"`).
   2. `{{2}}` (*Text*): Booking Reference (e.g. `"ST-YW3RJR"`).
   3. `{{3}}` (*Text*): Fare and Payment URL (e.g. `"Amount: Rs 499 | Pay: https://opsfusionn.online/payment?booking_id=37"`).
-* **Suggested body**: `Hello {{1}}, your Snehith Travels booking {{2}} is awaiting payment. Fare and secure payment link: {{3}}. Complete payment to confirm your seat.`
+* **Suggested body**: `Hello {{1}} Greetings from the Snehith Travels,\n\nYour Snehith Travels booking {{2}} is awaiting payment.\n\nFare and secure payment link: {{3}}\n\nPlease complete payment to confirm your seat.`
 * **No generic fallback**: A failed template send is reported as failed, rather than sending an unrelated greeting or retail message.
 
 ### 3.4 Phone Number Normalization

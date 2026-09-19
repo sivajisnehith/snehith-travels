@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     WHATSAPP_API_VERSION: str = "v22.0"
     # Must match an approved Meta WhatsApp template for Snehith Travels.
     WHATSAPP_PAYMENT_TEMPLATE_NAME: str = "snehith_travels_payment_link"
+    WHATSAPP_PAYMENT_TEMPLATE_LANG: str = "en"
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     
     @property

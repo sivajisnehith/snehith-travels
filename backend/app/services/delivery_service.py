@@ -60,6 +60,7 @@ class PaymentLinkDeliveryService:
         payment_url: str,
         booking_reference: str,
         amount: float,
+        customer_name: str = "Customer",
     ) -> Dict[str, Any]:
         normalized_channel = channel.upper().strip()
 
@@ -113,18 +114,21 @@ class PaymentLinkDeliveryService:
             template_name = getattr(
                 settings, "WHATSAPP_PAYMENT_TEMPLATE_NAME", "snehith_travels_payment_link"
             )
+            template_lang = getattr(
+                settings, "WHATSAPP_PAYMENT_TEMPLATE_LANG", "en"
+            )
             template_payload = {
                 "messaging_product": "whatsapp",
                 "to": normalized_phone,
                 "type": "template",
                 "template": {
                     "name": template_name,
-                    "language": {"code": "en_US"},
+                    "language": {"code": template_lang},
                     "components": [
                         {
                             "type": "body",
                             "parameters": [
-                                {"type": "text", "text": "Customer"},
+                                {"type": "text", "text": customer_name or "Customer"},
                                 {"type": "text", "text": str(booking_reference)},
                                 {"type": "text", "text": f"Amount: Rs {amount:,.0f} | Pay: {payment_url}"},
                             ],
@@ -145,6 +149,7 @@ class PaymentLinkDeliveryService:
 
                         # Also attempt companion rich text if active session exists (non-blocking)
                         try:
+                            display_name = customer_name if customer_name and customer_name != "Customer" else "Customer"
                             text_payload = {
                                 "messaging_product": "whatsapp",
                                 "to": normalized_phone,
@@ -153,7 +158,7 @@ class PaymentLinkDeliveryService:
                                     "preview_url": True,
                                     "body": (
                                         f"🚌 *Snehith Travels - Payment Link*\n\n"
-                                        f"Dear Customer,\n"
+                                        f"Dear {display_name},\n"
                                         f"Your booking reservation *{booking_reference}* is ready.\n\n"
                                         f"• *Amount Due:* ₹{amount:,.2f}\n"
                                         f"• *Payment Link:* {payment_url}\n\n"
@@ -180,6 +185,32 @@ class PaymentLinkDeliveryService:
                     logger.warning("Template %s returned %s (%s)", template_name, resp.status_code, data)
                     err_info = data.get("error") or {}
                     err_msg = err_info.get("message", f"HTTP {resp.status_code}: {resp.text}")
+                    err_code = err_info.get("code")
+                    err_subcode = err_info.get("error_subcode")
+                    error_data = err_info.get("error_data") or {}
+                    error_details = error_data.get("details") or ""
+
+                    # Clear, actionable diagnostic messages for administrators and agents
+                    if err_code == 131030 or "not in allowed list" in err_msg.lower() or "not in allowed list" in error_details.lower():
+                        detailed_msg = (
+                            f"Meta WhatsApp Sandbox Mode: Destination '{normalized_phone}' is not in the allowed test recipient list. "
+                            f"In Development Mode with a test number (+1 555), Meta only delivers to numbers explicitly added and verified "
+                            f"in the Meta Developer Portal under WhatsApp > API Setup > 'To'. To send to all passengers without restriction, "
+                            f"connect a real business number and publish the Meta App to Live Mode."
+                        )
+                    elif err_code == 132001 or "does not exist in" in error_details.lower():
+                        detailed_msg = (
+                            f"Meta WhatsApp Template Error: Template '{template_name}' not found for language '{template_lang}'. "
+                            f"Please verify the template language in Meta Developer Portal matches '{template_lang}'."
+                        )
+                    elif err_code == 190 or err_subcode == 463 or "session has expired" in err_msg.lower() or "token" in err_msg.lower():
+                        detailed_msg = (
+                            f"Meta WhatsApp Auth Error: API Access Token has expired or is invalid. "
+                            f"Please update WHATSAPP_API_TOKEN with a permanent System User Token."
+                        )
+                    else:
+                        detailed_msg = f"Meta WhatsApp API error ({err_code or resp.status_code}): {err_msg}"
+
                     return {
                         "delivery_status": "FAILED",
                         "channel": "WHATSAPP",
@@ -187,7 +218,7 @@ class PaymentLinkDeliveryService:
                         "payment_url": payment_url,
                         "booking_reference": booking_reference,
                         "amount": amount,
-                        "message": f"Meta WhatsApp API error: {err_msg}",
+                        "message": detailed_msg,
                     }
             except Exception as ex:
                 logger.exception("Error dispatching WhatsApp via Meta Cloud API: %s", ex)
