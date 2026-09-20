@@ -147,30 +147,6 @@ class PaymentLinkDeliveryService:
                         msg_id = data["messages"][0]["id"]
                         logger.info("WhatsApp template sent via Meta Cloud API to %s, ID: %s", normalized_phone, msg_id)
 
-                        # Also attempt companion rich text if active session exists (non-blocking)
-                        try:
-                            display_name = customer_name if customer_name and customer_name != "Customer" else "Customer"
-                            text_payload = {
-                                "messaging_product": "whatsapp",
-                                "to": normalized_phone,
-                                "type": "text",
-                                "text": {
-                                    "preview_url": True,
-                                    "body": (
-                                        f"🚌 *Snehith Travels - Payment Link*\n\n"
-                                        f"Dear {display_name},\n"
-                                        f"Your booking reservation *{booking_reference}* is ready.\n\n"
-                                        f"• *Amount Due:* ₹{amount:,.2f}\n"
-                                        f"• *Payment Link:* {payment_url}\n\n"
-                                        f"Please click the link above to complete your payment securely via UPI, Card, or Net Banking.\n"
-                                        f"Thank you for choosing Snehith Travels!"
-                                    ),
-                                },
-                            }
-                            client.post(url, headers=headers, json=text_payload)
-                        except Exception:
-                            pass
-
                         return {
                             "delivery_status": "SENT",
                             "channel": "WHATSAPP",

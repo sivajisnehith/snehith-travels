@@ -273,7 +273,7 @@ function BookingPageContent() {
                   <select
                     value={boardingPoint}
                     onChange={(e) => setBoardingPoint(e.target.value)}
-                    className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50"
+                    className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
                   >
                     {bus.boarding_points?.map((bp, idx) => (
                       <option key={idx} value={bp}>
@@ -290,7 +290,7 @@ function BookingPageContent() {
                   <select
                     value={droppingPoint}
                     onChange={(e) => setDroppingPoint(e.target.value)}
-                    className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50"
+                    className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
                   >
                     {bus.dropping_points?.map((dp, idx) => (
                       <option key={idx} value={dp}>
@@ -331,7 +331,7 @@ function BookingPageContent() {
                         value={p.name}
                         onChange={(e) => handlePassengerChange(idx, 'name', e.target.value)}
                         placeholder="e.g. Ramesh Kumar"
-                        className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-200 bg-white"
+                        className="w-full text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
 
@@ -348,7 +348,7 @@ function BookingPageContent() {
                         onChange={(e) =>
                           handlePassengerChange(idx, 'age', parseInt(e.target.value, 10) || 1)
                         }
-                        className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-200 bg-white"
+                        className="w-full text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
 
@@ -359,7 +359,7 @@ function BookingPageContent() {
                       <select
                         value={p.gender}
                         onChange={(e) => handlePassengerChange(idx, 'gender', e.target.value)}
-                        className="w-full text-xs px-3 py-2 rounded-lg border border-zinc-200 bg-white"
+                        className="w-full text-xs font-semibold px-3 py-2 rounded-lg border border-zinc-200 bg-white text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-blue-600"
                       >
                         <option value="M">Male</option>
                         <option value="F">Female</option>
@@ -538,7 +538,7 @@ function BookingPageContent() {
                       setWhatsAppPhone(e.target.value);
                       if (phoneError) setPhoneError(null);
                     }}
-                    className={`w-full text-xs font-semibold pl-16 pr-3.5 py-3 rounded-xl border bg-zinc-50 focus:bg-white focus:outline-hidden focus:ring-2 ${
+                    className={`w-full text-xs font-semibold pl-16 pr-3.5 py-3 rounded-xl border bg-zinc-50 text-zinc-900 placeholder:text-zinc-400 focus:bg-white focus:outline-hidden focus:ring-2 ${
                       phoneError
                         ? 'border-red-300 focus:ring-red-500'
                         : 'border-zinc-200 focus:ring-blue-600'

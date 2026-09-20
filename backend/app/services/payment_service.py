@@ -119,6 +119,7 @@ def create_payment_link(
         "notify": {
             "sms": False,
             "email": False,
+            "whatsapp": False,
         },
         "reminder_enable": False,
         "notes": {
